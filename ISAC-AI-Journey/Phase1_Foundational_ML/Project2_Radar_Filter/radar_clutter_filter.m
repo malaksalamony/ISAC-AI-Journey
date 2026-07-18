@@ -1,5 +1,5 @@
 %% ISAC Machine Learning Project 2: Radar Target Clutter Filter
-% Author: Your Name
+% Author: Malak ElSalamouny
 % Description: This script implements a binary Classification model using a 
 %              Support Vector Machine (SVM). It separates moving "Targets" 
 %              (vehicles) from background "Clutter" (trees, buildings) based 

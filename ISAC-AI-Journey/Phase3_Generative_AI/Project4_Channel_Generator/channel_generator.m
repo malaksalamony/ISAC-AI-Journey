@@ -1,5 +1,5 @@
 %% ISAC Generative AI Project 4: Synthetic Channel Condition Generator
-% Author: Your Name
+% Author: Malak ElSalamouny
 % Description: This script implements a Generative Autoencoder Neural Network.
 %              It learns the underlying statistical distribution of 2x2 MIMO 
 %              channel matrices (H) and generates synthetic channel profiles.

@@ -1,14 +1,11 @@
-%% ISAC Generative AI Project 5: Local 3GPP Bot
-% Author: Your Name
-% Description: This script implements a Retrieval-Augmented Generation (RAG)
-%              lite workflow. It feeds a raw 3GPP specification text snippet
-%              to a local LLM via Ollama to answer structural technical questions.
+%% ISAC Generative AI Project 5: Local 3GPP Bot (Native REST API Edition)
+% Author: Malak ElSalamouny
+% Description: Queries local Ollama directly via HTTP POST and native JSON structures.
 % GitHub Category: Generative AI / Text-driven Telecom Analytics
 
 clear; clc; close all;
 
-%% 1. Define the 3GPP Technical Document Snippet
-% Simulating a paragraph straight out of a 3GPP Release 18/19 ISAC spec
+%% 1. Technical Document Snippet
 document_context = [...
     '3GPP TS 38.555 Section 4.2: Integrated Sensing and Communication (ISAC) ' ...
     'architectures utilize co-designed wave resource provisioning. For high-accuracy ' ...
@@ -19,43 +16,47 @@ document_context = [...
     'to counter high Doppler spreads. For standard communication-only links, ' ...
     'the default configurations default back to 30 kHz Subcarrier Spacing.'];
 
-%% 2. Connect to the Local Ollama Instance
-disp('--- Initializing Local Llama 3.2 Model via Ollama ---');
-try
-    % Connect to Ollama using the toolbox class wrapper
-    bot_agent = ollamaChat("llama3.2:1b", ...
-        "You are an expert 3GPP Telecom Standardization Assistant. " + ...
-        "Answer the user query based ONLY on the provided document context.");
-catch ME
-    error('Could not connect to Ollama. Make sure Ollama is running and you executed "ollama pull llama3.2:1b" in cmd.');
-end
-
-%% 3. Define the Engineering Inquiry
 user_query = 'What is the required Subcarrier Spacing configuration if an ISAC vehicle is traveling at 140 km/h?';
 
-fprintf('\n--- Document Context Loaded ---\n%s\n', document_context);
-fprintf('\n--- User Query Sent ---\n%s\n', user_query);
-
-%% 4. Engineer the Prompt Matrix (RAG Context Injection)
+%% 2. Setup Native Prompt Structure
 engineered_prompt = sprintf([...
+    'You are an expert 3GPP Telecom Assistant. Answer the question based ONLY on the context.\n\n' ...
     'CONTEXT DOCUMENT:\n%s\n\n' ...
     'QUESTION:\n%s\n\n' ...
-    'INSTRUCTION: Formulate a precise engineering answer using the information in the context.'], ...
-    document_context, user_query);
+    'ANSWER:'], document_context, user_query);
 
-%% 5. Generate Response from the AI
-disp('--- Querying Local LLM (Processing on CPU) ---');
-[~, response] = generate(bot_agent, engineered_prompt);
+%% 3. Formulate the REST API Call parameters
+url = 'http://localhost:11434/api/generate';
 
-%% 6. Display the Finalized Extraction
-fprintf('\n================= BOT RESPONSE =================\n');
-disp(response);
-fprintf('================================================\n');
+% CRITICAL FIX: Raise timeout from 60 seconds to 300 seconds (5 minutes)
+options = weboptions('MediaType', 'application/json', 'Timeout', 300);
 
-% Save output log to document execution for GitHub portfolio
-fid = fopen('bot_output_log.txt', 'w');
-if fid ~= -1
-    fprintf(fid, 'Query: %s\n\nResponse:\n%s', user_query, response);
-    fclose(fid);
-    disp('--- Saved output log to bot_output_log.txt ---');
+% SPEED OPTIMIZATION: We add a 'options' struct inside the payload to limit 
+% the model's generation window, making it process much faster on your CPU.
+llm_hyperparameters = struct(...
+    'num_predict', 100, ...   % Stop generating text after ~75 words (keeps answers concise)
+    'temperature', 0.1);      % Lower temperature makes the model faster and more deterministic
+
+% Build the request body payload
+request_payload = struct(...
+    'model', 'llama3.2:1b', ...
+    'prompt', engineered_prompt, ...
+    'stream', false, ...
+    'options', llm_hyperparameters); % Inject the speed optimizations
+
+%% 4. Dispatch the HTTP POST Request
+disp('--- Sending Request directly to Local Ollama API ---');
+disp('--- (Processing on CPU: Please wait, this may take 1-2 minutes) ---');
+try
+    % Send payload and automatically decode JSON response string to a MATLAB struct
+    json_response = webwrite(url, jsonencode(request_payload), options);
+    response = json_response.response;
+    
+    % Display output layout
+    fprintf('\n================= BOT RESPONSE =================\n');
+    disp(response);
+    fprintf('================================================\n');
+    
+catch ME
+    error('API Query failed. Make sure Ollama is open and running llama3.2:1b. Error details: %s', ME.message);
 end

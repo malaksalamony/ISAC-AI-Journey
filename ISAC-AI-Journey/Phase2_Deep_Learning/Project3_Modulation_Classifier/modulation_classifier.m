@@ -1,5 +1,5 @@
 %% ISAC Deep Learning Project 3: Micro-Modulation Classifier
-% Author: Your Name
+% Author: Malak ElSalamouny
 % Description: This script builds a Multi-Layer Perceptron (MLP) Neural Network
 %              to classify noisy signal samples as either BPSK or QPSK.
 % GitHub Category: Deep Learning Foundations / Signal Intelligence
